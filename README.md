@@ -1,32 +1,32 @@
 Role Name
 =========
 
-A brief description of the role goes here.
+Redhat Pacemaker cluster check tool.
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- apt-get install ansible #Ansible Package
+- Python3
+- pip3
+- pip3 install lxml #lxml to read cib file
 
-Role Variables
---------------
-
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
-
-Dependencies
-------------
-
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
 
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+***How to use/run Cluster check role :***
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
-
+- sudo apt-get update
+- sudo apt-get install ansible
+- pip3 install lxml
+- mkdir roles
+- cd roles/
+- git clone https://github.com/spalnatik/rhel_cluster_role.git .
+- cd ..
+- wget raw.githubusercontent.com/spalnatik/rhel_cluster_role/main/toolcheck_playbook.yml
+- ansible-playbook -e "file_path=sosreport-sapapsbhdb-2023-09-18-ywvudrg" toolcheck_playbook.yml
+  
 License
 -------
 
@@ -35,4 +35,4 @@ BSD
 Author Information
 ------------------
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+Name : Sai Kumar Palnati
