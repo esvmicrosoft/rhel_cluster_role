@@ -1,0 +1,36 @@
+- name: check totem value
+  command: cat {{ file_path }}/etc/corosync/corosync.conf
+  register: corosync
+
+- name: Compare corosync totem token value 
+  assert:
+   that: "'token: 30000' in corosync.stdout"
+   msg: token value is not set to 30000
+  register: msg
+  ignore_errors: yes 
+
+- name: Compare quorum expected votes
+  assert: 
+   that: "'expected_votes: 2' in corosync.stdout"
+   msg: expected_votes is not set to 2
+  register: votes_msg
+  ignore_errors: yes
+
+- name: Determine Totem Token status
+  set_fact:
+    criteria_met: "Totem value is set to 30000"
+  when: msg.failed == false
+
+- name: Quorum Criteria Met Status
+  set_fact:
+    criteria_met_votes: "expected_votes is set to 2"
+  when: votes_msg.failed == false
+
+- name: Append results to output.txt
+  lineinfile:
+    path: "output.txt"
+    create: yes
+    line: |
+      Totem Token Value Comparison:  {% if criteria_met is defined %} Totem value is set to 30000  {% else %} {{ msg.msg }} {% endif %}
+      
+      Quorum Expected Votes Comparison: {% if criteria_met_votes is defined %} expected_votes is set to 2 {% else %} {{ votes_msg.msg }} {% endif %}

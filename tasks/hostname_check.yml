@@ -1,0 +1,43 @@
+- name: Extract Host Node Names
+  shell: awk '/^ *name:/{node_names = node_names "," $2} END {sub(/^,/, "", node_names); print "nodename:" node_names}' {{ file_path }}/etc/corosync/corosync.conf
+  register: host_node_names
+
+- name: Print Host Node Names
+  debug:
+    var: host_node_names.stdout
+
+- name: Check if Nodes are in /etc/hosts
+  command: grep -q "{{ item }}" {{ file_path }}/etc/hosts
+  loop: "{{ host_node_names.stdout.split(':')[1].split(',') }}"
+  ignore_errors: yes
+  register: grep_results
+
+- name: Set up the results list
+  set_fact:
+    result_list: []
+
+- name: Register Results
+  set_fact:
+    result_list: "{{ result_list + ['Node ' ~ item.item ~ ' is present in /etc/hosts'] }}"
+  loop: "{{ grep_results.results }}"
+  when: not item.failed
+
+- name: Register Missing Nodes
+  set_fact:
+    result_list: "{{ result_list + ['Node ' ~ item.item ~ ' is not present in /etc/hosts'] }}"
+  loop: "{{ grep_results.results }}"
+  when: item.failed
+
+- name: Print Results
+  debug:
+    var: result_list
+
+- name: Create output.txt
+  copy:
+    content: |
+      {{ host_node_names.stdout }}
+      {% for result in result_list %}
+      {{ result }}
+      {% endfor %}
+    dest: "output.txt"
+

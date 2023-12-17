@@ -1,0 +1,47 @@
+---
+- name: Extract Host Node Names
+  include_tasks: hostname_check.yml
+
+- name: Check RPM Version
+  include_tasks: rpm_version_check.yml
+
+- name: Extract Host Node Names
+  include_tasks: corosync_check.yml
+
+- name: Check Pacemaker Configuration
+  include_tasks: pacemaker_check.yml
+
+- name: Check MSI Configuration
+  include_tasks: msi_configuration_check.yml
+
+- name: Analyze pc configuration
+  include_tasks: pc_configuration.yml
+
+- name: checking hostname
+  command: cat {{ file_path }}/hostname
+  register: hostname
+
+- name: Run check.py script on the same host
+  command: "python3 {{ role_path }}/files/check.py {{ file_path }}"
+  register: script_output
+
+- name: Append script output to an existing file
+  lineinfile:
+    path: "{{ playbook_dir }}/output.txt"
+    create: yes  # Create the file if it doesn't exist
+    line: "{{ script_output.stdout | default('') }}"
+
+- name: Remove empty lines from output.txt using lineinfile
+  lineinfile:
+    path: output.txt
+    state: absent
+    regexp: '^$'
+
+- name: Display the contents of output.txt
+  command: "cat output.txt"
+  register: cat_output
+
+- name: Print the contents
+  debug:
+    var: cat_output.stdout_lines
+

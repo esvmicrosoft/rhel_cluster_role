@@ -1,0 +1,97 @@
+- name: Extract OS Version
+  command: awk -F'"' '/VERSION_ID/ {print $2}' {{ file_path }}/etc/os-release
+  register: os_version_info
+
+- name: Print OS Version
+  debug:
+    msg: "OS version: {{ os_version_info.stdout }}"
+  register: os_version_debug
+
+- name: Run Grep
+  command: grep -i "fence-agents-azure-arm" {{ file_path }}/installed-rpms
+  register: grep_result
+
+- name: Extract fence agent Version
+  shell: echo "{{ grep_result.stdout }}" | sed -n 's/.*fence-agents-azure-arm-\(.*\)\.noarch.*/\1/p'
+  register: rpm_info
+
+- name: Print Extracted Version
+  debug:
+    msg: "Fence agent version: {{ rpm_info.stdout }}"
+  register: rpm_info_debug
+
+- name: checking hostname
+  command: cat {{ file_path }}/hostname
+  register: hostname
+
+- name: Check for MSI Configuration
+  command: grep -q 'msi' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml
+  ignore_errors: yes
+  register: grep_result
+
+- name: Print and Append Fail Messages
+  block:
+    - name: Check Recommended fence_agent RPM Version 8.2
+      fail:
+        msg: "Recommended fence_agent RPM version criteria not met for OS version 8.2"
+      register: fail_msg_8_2
+      when: os_version_info.stdout == '8.2' and not rpm_info.stdout is version('4.2.1-41.el8_2.4', '>') and grep_result.rc == 0
+      ignore_errors: yes
+
+    - name: Check Recommended fence_agent RPM Version 8.4
+      fail:
+        msg: "Recommended fence_agent RPM version criteria not met for OS version 8.4"
+      register: fail_msg_8_4
+      when: os_version_info.stdout == '8.4' and not rpm_info.stdout is version('4.2.1-54.el8', '>') and grep_result.rc == 0
+      ignore_errors: yes
+
+    - name: Check Recommended fence_agent RPM Version 8.1
+      fail:
+        msg: "Recommended fence_agent RPM version criteria not met for OS version 8.1"
+      register: fail_msg_8_1
+      when: os_version_info.stdout == '8.1' and not rpm_info.stdout is version('4.2.1-30.el8_1.4', '>') and grep_result.rc == 0
+      ignore_errors: yes
+
+    - name: Check Recommended fence_agent RPM Version 7.9
+      fail:
+        msg: "Recommended fence_agent RPM version criteria not met for OS version 7.9"
+      register: fail_msg_7_9
+      when: os_version_info.stdout == '7.9' and not rpm_info.stdout is version('4.2.1-41.el7_9', '>') and grep_result.rc == 0
+      ignore_errors: yes
+
+    - name: Check Recommended fence_agent RPM Version 7.6
+      fail:
+        msg: "Recommended fence_agent RPM version criteria not met for OS version 7.6"
+      register: fail_msg_7_6
+      when: os_version_info.stdout == '7.6' and not rpm_info.stdout is version('4.2.1-11.el7_6.8', '>') 
+      ignore_errors: yes
+
+    - name: Check Recommended fence_agent RPM Version 7.5
+      fail:
+        msg: "Recommended fence_agent RPM version criteria not met for OS version 7.5"
+      register: fail_msg_7_5
+      when: os_version_info.stdout == '7.5' and not rpm_info.stdout is version('4.0.11-86.el7_5.8', '>') 
+      ignore_errors: yes
+
+    - name: Check Recommended fence_agent RPM Version 7.4
+      fail:
+        msg: "Recommended fence_agent RPM version criteria not met for OS version 7.4"
+      register: fail_msg_7_4
+      when: os_version_info.stdout == '7.4' and not rpm_info.stdout is version('4.0.11-66.el7_4.12', '>') 
+      ignore_errors: yes
+
+    - name: Append to output.txt
+      lineinfile:
+        path: "output.txt"
+        create: yes
+        line: |
+          {{ os_version_debug.msg }}
+          {{ rpm_info_debug.msg }}
+          {% if fail_msg_8_2.msg is defined %}{{ fail_msg_8_2.msg }}{% endif %}
+          {% if fail_msg_8_4.msg is defined %}{{ fail_msg_8_4.msg }}{% endif %}
+          {% if fail_msg_8_1.msg is defined %}{{ fail_msg_8_1.msg }}{% endif %}
+          {% if fail_msg_7_9.msg is defined %}{{ fail_msg_7_9.msg }}{% endif %}
+          {% if fail_msg_7_6.msg is defined %}{{ fail_msg_7_6.msg }}{% endif %}
+          {% if fail_msg_7_5.msg is defined %}{{ fail_msg_7_5.msg }}{% endif %}
+          {% if fail_msg_7_4.msg is defined %}{{ fail_msg_7_4.msg }}{% endif %}
+

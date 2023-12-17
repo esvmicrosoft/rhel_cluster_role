@@ -1,0 +1,29 @@
+- name: checking hostname
+  command: cat {{ file_path }}/hostname
+  register: hostname
+
+- name: Check for MSI Configuration
+  command: grep -q 'msi' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml
+  ignore_errors: yes
+  register: grep_result
+
+- name: Debug Output
+  debug:
+    msg: "Azure Fence Agent is using MSI"
+  register: msimsg
+  when: grep_result.rc == 0
+
+- name: Debug Output
+  debug:
+    msg: "Azure Fence Agent is using Service Principal"
+  register: spmsg
+  when: grep_result.rc != 0
+
+
+- name: Append to output.txt
+  lineinfile:
+    path: "output.txt"
+    create: yes
+    line: |
+      {% if msimsg.msg is defined %}{{ msimsg.msg }}{% endif %}
+      {% if spmsg.msg is defined %}{{ spmsg.msg }}{% endif %}

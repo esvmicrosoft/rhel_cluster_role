@@ -1,0 +1,211 @@
+- name: Extract and Print SID and InstanceNumber
+  shell: |
+    sid_value=$(grep -o '<nvpair id="SAPHana[A-Za-z_0-9]*-instance_attributes-SID" name="SID" value="[A-Za-z0-9]*"' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml | sed -E 's/.*value="([A-Za-z0-9]*)"/\1/' | head -1)
+    instance_number=$(grep -o '<nvpair id="SAPHan[A-Za-z_0-9]*-instance_attributes-InstanceNumber" name="InstanceNumber" value="[0-9]*"' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml | sed -E 's/.*value="([0-9]*)"/\1/' | head -1)
+    echo "SID_NAME: $sid_value, InstanceNumber: $instance_number"
+  register: sid_and_instance
+  changed_when: false
+
+- name: Print SID and InstanceNumber
+  debug:
+    var: sid_and_instance.stdout
+  changed_when: false
+
+- name: checking hostname
+  command: cat {{ file_path }}/hostname
+  register: hostname
+
+- name: Read CIB XML File
+  slurp:
+    src: "{{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml"
+  register: cib_file
+
+- name: Extract CIB Values
+  set_fact:
+    cib_values: "{{ cib_file.content | b64decode }}"
+
+- name: Compare SAPHanaTopology start timeout value
+  assert:
+    that: cib_values is search("SAPHanaTopology[A-Za-z_0-9]*-start-interval-0s.*timeout=\"600\"")
+    msg: SAPHanaTopology start-interval timeout is not set to 600
+  register: shtstart_msg
+  ignore_errors: yes
+
+- name: Compare SAPHanaTopology stop timeout value
+  assert:
+    that: cib_values is search("SAPHanaTopology[A-Za-z_0-9]*-stop-interval-0s.*timeout=\"300\"")
+    msg: SAPHanaTopology stop-interval timeout is not set to 300
+  register: shtstop_msg
+  ignore_errors: yes
+
+- name: Compare SAPHanaTopology monitor timeout value
+  assert:
+    that: cib_values is search("SAPHanaTopology[A-Za-z_0-9]*-monitor-interval-[0-9]*.*timeout=\"600\"")
+    msg: SAPHanaTopology monitor-interval timeout is not set to 600
+  register: shtmnt_msg
+  ignore_errors: yes
+
+- name: Compare SAPHanaTopology monitor interval value
+  assert:
+    that: cib_values is search("SAPHanaTopology[A-Za-z_0-9]*-monitor-interval-[0-9]*.*interval=\"10\"")
+    msg: SAPHanaTopology monitor-interval interval value is not set to 10
+  register: shtmntint_msg
+  ignore_errors: yes
+
+- name: Compare SAPHanaTopology clone-max value
+  assert:
+    that: cib_values is search("SAPHanaTopology[A-Za-z_0-9]*-clone-meta_attributes-clone-max.*value=\"2\"")
+    msg: SAPHanaTopology clone-max value is not set to 2
+  register: shtclmax_msg
+  ignore_errors: yes
+
+- name: Compare SAPHanaTopology clone-node-max value
+  assert:
+    that: cib_values is search("SAPHanaTopology[A-Za-z_0-9]*-clone-meta_attributes-clone-node-max.*value=\"1\"")
+    msg: SAPHanaTopology clone-node-max value is not set to 1
+  register: shtclnmax_msg
+  ignore_errors: yes
+
+- name: Compare SAPHanaTopology interleave value
+  assert:
+    that: cib_values is search("SAPHanaTopology[A-Za-z_0-9]*-clone-meta_attributes-interleave.*value=\"true\"")
+    msg: SAPHanaTopology clone interleave value is not set to true
+  register: shtclnint_msg
+  ignore_errors: yes
+
+- name: Extract and Print SID and InstanceNumber
+  shell: |
+    sid_value=$(grep -o '<nvpair id="SAPHana[A-Za-z_0-9]*-instance_attributes-SID" name="SID" value="[A-Za-z0-9]*"' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml | sed -E 's/.*value="([A-Za-z0-9]*)"/\1/' | head -1)
+    instance_number=$(grep -o '<nvpair id="SAPHan[A-Za-z_0-9]*-instance_attributes-InstanceNumber" name="InstanceNumber" value="[0-9]*"' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml | sed -E 's/.*value="([0-9]*)"/\1/' | head -1)
+    echo "$sid_value,$instance_number"
+  register: sid_instance
+  changed_when: false
+
+- name:
+  shell: echo {{ sid_instance.stdout }} | cut -d "," -f1
+  register: sid_name
+  ignore_errors: yes
+
+- name:
+  shell: echo {{ sid_instance.stdout }} | cut -d "," -f2
+  register: sid_value
+  ignore_errors: yes
+
+- name: Compare SAPHana AUTOMATED_REGISTER value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-instance_attributes-AUTOMATED_REGISTER.*value=\"false\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} AUTOMATED_REGISTER value is not set to false
+  register: shareg_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana DUPLICATE_PRIMARY_TIMEOUT value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-instance_attributes-DUPLICATE_PRIMARY_TIMEOUT.*value=\"7200\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} DUPLICATE_PRIMARY_TIMEOUT value is not set to 7200
+  register: shadup_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana PREFER_SITE_TAKEOVER value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-instance_attributes-PREFER_SITE_TAKEOVER.*value=\"true\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} PREFER_SITE_TAKEOVER  value is not set to true
+  register: shaprefersite_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana start value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-start-interval-0s.*timeout=\"3600\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} start-interval timeout is not set to 3600
+  register: shastart_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana stop value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-stop-interval-0s.*timeout=\"3600\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} stop-interval timeout is not set to 3600
+  register: shastop_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana Master value
+  assert:
+    that: cib_values is search("Master.*timeout=\"700\"")
+    msg: SAPHana Master timeout is not set to 700
+  register: shmaster_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana Slave value
+  assert:
+    that: cib_values is search("Slave.*timeout=\"700\"")
+    msg: SAPHana Slave timeout is not set to 700
+  register: shslave_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana promote value
+  assert:
+    that: cib_values is search("promote.*timeout=\"3600\"")
+    msg: SAPHana promote timeout is not set to 3600
+  register: shpromote_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana demote value
+  assert:
+    that: cib_values is search("demote.*timeout=\"3600\"")
+    msg: SAPHana demote timeout is not set to 3600
+  register: shdemote_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana clone-max value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-clone-meta_attributes-clone-max.*value=\"2\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} clone max value is not set to 2
+  register: shaclonemax_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana clone-node-max value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-clone-meta_attributes-clone-node-max.*value=\"1\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} clone node max value is not set to 1
+  register: shaclonenodemax_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana interleave value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-clone-meta_attributes-interleave.*value=\"true\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} clone interleave value is not set to true
+  register: shacinterleave_msg
+  ignore_errors: yes
+
+- name: Compare SAPHana notify value
+  assert:
+    that: cib_values is search("SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }}*-clone-meta_attributes-notify.*value=\"true\"")
+    msg: SAPHana_{{ sid_name.stdout }}_{{ sid_value.stdout }} clone notify value is not set to true
+  register: shacnotify_msg
+  ignore_errors: yes
+  
+- name: Append to output.txt
+  lineinfile:
+    path: "output.txt"
+    create: yes
+    line: |
+      {{ sid_and_instance.stdout }}
+      {{ shtstart_msg.msg        if shtstart_msg.failed        else '' }}
+      {{ shtstop_msg.msg         if shtstop_msg.failed         else '' }}
+      {{ shtmnt_msg.msg          if shtmnt_msg.failed          else '' }}
+      {{ shtmntint_msg.msg       if shtmntint_msg.failed       else '' }}
+      {{ shtclmax_msg.msg        if shtclmax_msg.failed        else '' }}
+      {{ shtclnmax_msg.msg       if shtclnmax_msg.failed       else '' }}
+      {{ shtclnint_msg.msg       if shtclnint_msg.failed       else '' }}
+      {{ shareg_msg.msg          if shareg_msg.failed          else '' }}
+      {{ shadup_msg.msg          if shadup_msg.failed          else '' }}
+      {{ shaprefersite_msg.msg   if shaprefersite_msg.failed   else '' }}
+      {{ shastart_msg.msg        if shastart_msg.failed        else '' }}
+      {{ shastop_msg.msg         if shastop_msg.failed         else '' }}
+      {{ shmaster_msg.msg        if shmaster_msg.failed        else '' }}
+      {{ shslave_msg.msg         if shslave_msg.failed         else '' }}
+      {{ shpromote_msg.msg       if shpromote_msg.failed       else '' }}
+      {{ shdemote_msg.msg        if shdemote_msg.failed        else '' }}
+      {{ shaclonemax_msg.msg     if shaclonemax_msg.failed     else '' }}
+      {{ shaclonenodemax_msg.msg if shaclonenodemax_msg.failed else '' }}
+      {{ shacinterleave_msg.msg  if shacinterleave_msg.failed  else '' }}
+      {{ shacnotify_msg.msg      if shacnotify_msg.failed      else '' }}
+

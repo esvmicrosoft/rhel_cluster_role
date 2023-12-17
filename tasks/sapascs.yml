@@ -1,0 +1,181 @@
+- name: Extract and Print device name, directory, and fstype
+  shell: |
+    device=$(grep -oP '<nvpair id="rsc_fs_[A-Za-z0-9]*_ASCS-instance_attributes-device" name="device" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    directory=$(grep -oP '<nvpair id="rsc_fs_[A-Za-z0-9]*_ASCS-instance_attributes-directory" name="directory" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    fstype=$(grep -oP '<nvpair id="rsc_fs_[A-Za-z0-9]*_ASCS-instance_attributes-fstype" name="fstype" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    echo "SAP_ASCS_Device: $device, SAP_ASCS_Directory: $directory, SAP_ASCS_Fstype: $fstype"
+  register: device_directory_fstype
+  changed_when: false
+  
+
+- name: Print device name, directory, and fstype
+  debug:
+    var: device_directory_fstype.stdout  
+  changed_when: false
+
+- name: Checking hostname
+  command: cat "{{ file_path }}/hostname"
+  register: hostname
+
+- name: Read CIB XML File
+  slurp:
+    src: "{{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml"
+  register: cib_file
+
+- name: Extract CIB Values
+  set_fact:
+    cib_values: "{{ cib_file.content | b64decode }}"
+  
+
+- name: Compare SAP ASCS FS start timeout value
+  assert:
+    that: cib_values is search("rsc_fs_[A-Za-z0-9]*_ASCS-start-interval-0.*timeout=\"60\"")
+    msg: SAP ASCS FS start timeout value is not set to 60
+  register: ASCSFS_start_msg
+  ignore_errors: yes
+
+- name: Compare SAP ASCS FS stop timeout value
+  assert:
+    that: cib_values is search("rsc_fs_[A-Za-z0-9]*_ASCS-stop-interval-0.*timeout=\"120\"")
+    msg: SAP ASCS FS stop timeout value is not set to 120
+  register: ASCSFS_stop_msg
+  ignore_errors: yes
+
+- name: Compare SAP ASCS FS monitor-interval timeout value
+  assert:
+    that: cib_values is search("rsc_fs_[A-Za-z0-9]*_ASCS-monitor-interval-200.*timeout=\"40\"")
+    msg: SAP ASCS FS monitor-interval timeout value is not set to 40
+  register: ASCSFS_monitor_msg
+  ignore_errors: yes
+
+- name: Extract and Print ERS device name, directory, and fstype
+  shell: |
+    ers_device=$(grep -oP '<nvpair id="rsc_fs_[A-Za-z0-9]*_ERS-instance_attributes-device" name="device" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    ers_directory=$(grep -oP '<nvpair id="rsc_fs_[A-Za-z0-9]*_ERS-instance_attributes-directory" name="directory" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    ers_fstype=$(grep -oP '<nvpair id="rsc_fs_[A-Za-z0-9]*_ERS-instance_attributes-fstype" name="fstype" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    echo "SAP_ERS_Device: $ers_device, SAP_ERS_Directory: $ers_directory, SAP_ERS_Fstype: $ers_fstype"
+  register: ers_device_directory_fstype
+  changed_when: false
+  
+  ignore_errors: yes
+
+- name: Print device name, directory, and fstype
+  debug:
+    var: ers_device_directory_fstype.stdout     
+  changed_when: false
+  ignore_errors: yes
+
+- name: Compare SAP ERS FS start timeout value
+  assert:
+    that: cib_values is search("rsc_fs_[A-Za-z0-9]*_ERS-start-interval-0.*timeout=\"60\"")
+    msg: SAP ERS FS start timeout value is not set to 60
+  register: ERSFS_start_msg
+  ignore_errors: yes
+
+- name: Compare SAP ERS FS stop timeout value
+  assert:
+    that: cib_values is search("rsc_fs_[A-Za-z0-9]*_ERS-stop-interval-0.*timeout=\"120\"")
+    msg: SAP ERS FS stop timeout value is not set to 120
+  register: ERSFS_stop_msg
+  ignore_errors: yes
+
+- name: Compare SAP ERS monitor timeout value
+  assert:
+    that: cib_values is search("rsc_fs_[A-Za-z0-9]*_ERS-monitor-interval-[0-9]*.*timeout=\"40\"")
+    msg: SAP ERS FS stop timeout value is not set to 40
+  register: ERSFS_monitor_msg
+  ignore_errors: yes
+
+- name: Extract and Print SAP instance ASCS InstanceName and START_PROFILE
+  shell: |
+    sap_ASCS_InstanceName=$(grep -oP '<nvpair id="rsc_sap_[A-Za-z0-9]*_ASCS[0-9]*-instance_attributes-InstanceName" name="InstanceName" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    sap_ASCS_START_PROFILE=$(grep -oP '<nvpair id="rsc_sap_[A-Za-z0-9]*_ASCS[0-9]*-instance_attributes-START_PROFILE" name="START_PROFILE" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    echo "ASCS_InstanceName: $sap_ASCS_InstanceName, ASCS_START_PROFILE: $sap_ASCS_START_PROFILE"
+  register: ASCS_InstanceName_START_PROFILE
+  changed_when: false
+  
+
+- name: Print ascs InstanceName_START_PROFILE
+  debug:
+    var: ASCS_InstanceName_START_PROFILE.stdout      
+  changed_when: false
+
+- name: Compare SAP Instance ASCS AUTOMATIC_RECOVER value
+  assert:
+    that: cib_values is search("rsc_sap_[A-Za-z0-9]*_ASCS[0-9]*-instance_attributes-AUTOMATIC_RECOVER.*value=\"false\"")
+    msg: SAP Instance ASCS AUTOMATIC_RECOVER value is not set to false
+  register: ASCS_AUTOMATIC_RECOVER_msg
+  ignore_errors: yes
+
+- name: Compare SAP Instance ASCS failure-timeout value
+  assert:
+    that: cib_values is search("rsc_sap_[A-Za-z0-9]*_ASCS[0-9]*-meta_attributes-failure-timeout.*value=\"60\"")
+    msg: SAP Instance ASCS failure-timeout value is not set to 60
+  register: ASCS_failure_value_msg
+  ignore_errors: yes
+
+- name: Compare SAP Instance ASCS migration-threshold value
+  assert:
+    that: cib_values is search("rsc_sap_[A-Za-z0-9]*_ASCS[0-9]*-meta_attributes-migration-threshold.*value=\"1\"")
+    msg: SAP Instance ASCS migration-threshold value is not set to 1
+  register: ASCS_migration_threshold_value_msg
+  ignore_errors: yes
+
+- name: Compare SAP Instance ASCS resource-stickiness value
+  assert:
+    that: cib_values is search("rsc_sap_[A-Za-z0-9]*_ASCS[0-9]*-meta_attributes-resource-stickiness.*value=\"5000\"")
+    msg: SAP Instance ASCS resource-stickiness value is not set to 5000
+  register: ASCS_resource_stickiness_value_msg
+  ignore_errors: yes
+
+- name: Extract and Print SAP instance ERS InstanceName and START_PROFILE
+  shell: |
+    sap_ERS_InstanceName=$(grep -oP '<nvpair id="rsc_sap_[A-Za-z0-9]*_ERS[0-9]*-instance_attributes-InstanceName" name="InstanceName" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    sap_ERS_START_PROFILE=$(grep -oP '<nvpair id="rsc_sap_[A-Za-z0-9]*_ERS[0-9]*-instance_attributes-START_PROFILE" name="START_PROFILE" value="\K[^"]+' {{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml)
+    echo "ERS_InstanceName: $sap_ERS_InstanceName, ERS_START_PROFILE: $sap_ERS_START_PROFILE"
+  register: ERS_InstanceName_START_PROFILE
+  changed_when: false
+  
+
+- name: Print InstanceName and START_PROFILE
+  debug:
+    var: ERS_InstanceName_START_PROFILE.stdout 
+  changed_when: false
+
+- name: Compare SAP Instance ERS AUTOMATIC_RECOVER value
+  assert:
+    that: cib_values is search("rsc_sap_[A-Za-z0-9]*_ERS[0-9]*-instance_attributes-AUTOMATIC_RECOVER.*value=\"false\"")
+    msg: SAP Instance ERS AUTOMATIC_RECOVER value is not set to false
+  register: ERS_AUTOMATIC_RECOVER_value_msg
+  ignore_errors: yes
+
+
+- name: Compare SAP Instance IS_ERS value
+  assert:
+    that: cib_values is search("rsc_sap_[A-Za-z0-9]*_ERS[0-9]*-instance_attributes-IS_ERS.*value=\"true\"")
+    msg: SAP Instance ERS IS_ERS value is not set to false
+  register: ERS_IS_ERS_value_msg
+  ignore_errors: yes
+
+- name: Append to output.txt
+  lineinfile:
+    path: "output.txt"
+    create: yes
+    line: |
+      {{ device_directory_fstype.stdout }}
+      {{ ers_device_directory_fstype.stdout }}
+      {{ ASCS_InstanceName_START_PROFILE.stdout }}
+      {{ ERS_InstanceName_START_PROFILE.stdout }}
+      {{ ASCSFS_start_msg                      if  ASCSFS_start_msg.failed                   else '' }} 
+      {{ ASCSFS_stop_msg                       if  ASCSFS_stop_msg.failed                    else '' }} 
+      {{ ASCSFS_monitor_msg                    if  ASCSFS_monitor_msg.failed                 else '' }} 
+      {{ ERSFS_start_msg                       if  ERSFS_start_msg.failed                    else '' }} 
+      {{ ERSFS_stop_msg                        if  ERSFS_stop_msg.failed                     else '' }} 
+      {{ ERSFS_monitor_msg                     if  ERSFS_monitor_msg.failed                  else '' }} 
+      {{ ASCS_AUTOMATIC_RECOVER_msg            if  ASCS_AUTOMATIC_RECOVER_msg.failed         else '' }} 
+      {{ ASCS_failure_value_msg                if  ASCS_failure_value_msg.failed             else '' }}
+      {{ ASCS_migration_threshold_value_msg    if  ASCS_migration_threshold_value_msg.failed else '' }}
+      {{ ASCS_resource_stickiness_value_msg    if  ASCS_resource_stickiness_value_msg.failed else '' }}
+      {{ ERS_AUTOMATIC_RECOVER_value_msg       if  ERS_AUTOMATIC_RECOVER_value_msg.failed    else '' }}
+      {{ ERS_IS_ERS_value_msg                  if  ERS_IS_ERS_value_msg.failed               else '' }}
+

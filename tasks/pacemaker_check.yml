@@ -1,0 +1,27 @@
+- name: Extract pacemaker Version
+  shell: grep -w "pacemaker-[0-9]" {{ file_path }}/installed-rpms|sed -n 's/.*pacemaker-\(.*\)\.x86_64.*/\1/p'
+  register: pc_version_info
+
+- name: Extract pc Version
+  debug:
+    msg: "{{pc_version_info.stdout}}"
+
+- name: Ignore PC version recommendation if it is rhel7
+  command: grep -q 'Red Hat Enterprise Linux Server release 7' {{ file_path }}/etc/redhat-release
+  ignore_errors: yes
+  register: rhel_msg
+
+- name: Check Recommended pc Versions
+  fail:
+    msg: "PC version is less than 2.0.4-6.el8 version"
+  register: fail_msg
+  when: pc_version_info.stdout is version('2.0.4-6.el8', '<') and rhel_msg.rc == 1
+  ignore_errors: yes
+
+
+- name: Append to output.txt
+  lineinfile:
+    path: "output.txt"
+    create: yes
+    line: |
+      {% if fail_msg.msg is defined %}{{ fail_msg.msg }}{% endif %}

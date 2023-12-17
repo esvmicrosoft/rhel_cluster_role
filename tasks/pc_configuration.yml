@@ -1,0 +1,78 @@
+- name: Read CIB XML File
+  slurp:
+    src: "{{ file_path }}/sos_commands/pacemaker/crm_report/{{ hostname.stdout }}/cib.xml"
+  register: cib_file
+
+- name: Extract CIB Values
+  set_fact:
+    cib_values: "{{ cib_file.content | b64decode }}"
+
+- name: Compare stonith Value
+  assert:
+    that: cib_values is search("stonith-timeout.*value=\"900\"")
+    msg: stonith-timeout vaule is not set to 900
+  register: st_msg
+  ignore_errors: yes
+
+- name: Compare stonith-enabled Value
+  assert:
+    that: cib_values is search("stonith-enabled.*value=\"true\"")
+    msg: stonith-enabled is not set to true
+  register: stenabled_msg
+  ignore_errors: yes
+
+- name: Compare Power Timeout
+  assert:
+    that: cib_values is search("power_timeout.*value=\"240\"")
+    msg: stonith power timeout value is not correct
+  register: pt_msg
+  ignore_errors: yes
+
+- name: Compare pcmk_reboot_timeout
+  assert:
+    that: cib_values is search("pcmk_reboot_timeout.*value=\"900\"")
+    msg: stonith pcmk_reboot_timeout timeout value is not correct
+  register: ptr_msg
+  ignore_errors: yes
+
+- name: Compare pcmk_monitor_timeout
+  assert:
+    that: cib_values is search("pcmk_monitor_timeout.*value=\"120\"")
+    msg: stonith pcmk_monitor_timeout timeout value is not correct
+  register: ptm_msg
+  ignore_errors: yes
+
+- name: Compare pcmk_monitor_retries
+  assert:
+    that: cib_values is search("pcmk_monitor_retries.*value=\"4\"")
+    msg: stonith pcmk_monitor_retries value is not correct
+  register: pmr_msg
+  ignore_errors: yes
+
+- name: Compare pcmk_action_limit
+  assert:
+    that: cib_values is search("pcmk_action_limit.*value=\"3\"")
+    msg: stonith pcmk_action_limit value is not correct
+  register: pal_msg
+  ignore_errors: yes
+
+- name: Compare Monitor Interval
+  assert:
+    that: cib_values is search("rsc_st_azure-monitor-interval-3600.*interval=\"3600\"")
+    msg: stonith azure-monitor-interval value is not correct
+  register: ami_msg
+  ignore_errors: yes
+
+- name: Append to output.txt
+  lineinfile:
+    path: "output.txt"
+    create: yes
+    line: |
+      {{ st_msg.msg if st_msg.failed else '' }}
+      {{ stenabled_msg.msg if stenabled_msg.failed else '' }}
+      {{ pt_msg.msg if pt_msg.failed else '' }}
+      {{ ptr_msg.msg if ptr_msg.failed else '' }}
+      {{ ptm_msg.msg if ptm_msg.failed else '' }}
+      {{ pmr_msg.msg if pmr_msg.failed else '' }}
+      {{ pal_msg.msg if pal_msg.failed else '' }}
+      {{ ami_msg.msg if ami_msg.failed else '' }}
