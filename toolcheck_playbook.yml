@@ -1,0 +1,5 @@
+---
+- name: Run Toolcheck Role
+  hosts: localhost
+  roles:
+    - rhel_cluster_role
