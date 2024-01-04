@@ -22,7 +22,7 @@ Example Playbook
 - pip3 install lxml
 - mkdir roles
 - cd roles/
-- git clone https://github.com/spalnatik/rhel_cluster_role.git .
+- git clone https://github.com/spalnatik/rhel_cluster_role.git 
 - cd ..
 - wget raw.githubusercontent.com/spalnatik/rhel_cluster_role/main/toolcheck_playbook.yml
 - ansible-playbook -e "file_path=sosreport-sapapsbhdb-2023-09-18-ywvudrg" toolcheck_playbook.yml
