@@ -12,7 +12,8 @@
   register: grep_result
 
 - name: Extract fence agent Version
-  shell: echo "{{ grep_result.stdout }}" | sed -n 's/.*fence-agents-azure-arm-\(.*\)\.noarch.*/\1/p'
+  #shell: echo "{{ grep_result.stdout }}" | sed -n 's/.*fence-agents-azure-arm-\(.*\)\.noarch.*/\1/p'
+  shell: echo "{{ grep_result.stdout }}" | sed -n 's/.*fence-agents-azure-arm-\(.*\)\.\(noarch\|x86_64\).*/\1/p'
   register: rpm_info
 
 - name: Print Extracted Version
